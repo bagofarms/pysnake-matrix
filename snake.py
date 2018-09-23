@@ -9,10 +9,16 @@ class Snake:
     # and ignore no-change or out-of-bounds conditions
     # 0 is up, 1 is right, 2 is down, 3 is left
     def changeDirection(self, command):
+        print 'command = ' + str(command) + ', direction = ' + str(self.__direction)
         if (command != self.__direction) and (command < 4):
-            total = command + self.__direction
             # Check for opposite directions and ignore
-            if (total != 2) or (total != 5):
+            if (command == 0) and (self.__direction == 2):
+                return
+            elif (command == 2) and (self.__direction == 0):
+                return
+            elif (command + self.__direction) == 4:
+                return
+            else:
                 self.__direction = command
 
     def move(self):
