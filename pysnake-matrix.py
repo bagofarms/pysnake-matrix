@@ -12,8 +12,8 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions
 import termios, tty
 
 class KillableThread(threading.Thread):
-    def __init__(self):
-        super(StoppableThread, self).__init__()
+    def __init__(self, theTarget):
+        super(StoppableThread, self).__init__(target=theTarget)
         self._stop_event = threading.Event()
 
     def kill(self):
