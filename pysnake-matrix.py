@@ -114,8 +114,11 @@ class PySnake:
             # out = ''
             for x in range(self.displayWidth):
                 # out += str(self.board[x][y])
-                if self.board[x][y] == self.snakeMarker:
+                # TODO: Make these snake colors configurable
+                if self.board[x][y] == self.snakeMarkers[0]:
                     self.offset_canvas.SetPixel(x, y, 0, 255, 0)
+                elif self.board[x][y] == self.snakeMarkers[1]:
+                    self.offset_canvas.SetPixel(x, y, 255, 255, 0)
                 elif self.board[x][y] == self.foodMarker:
                     self.offset_canvas.SetPixel(x, y, 0, 0, 255)
             # print out + "\r\n"
