@@ -11,6 +11,17 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 import termios, tty
 
+class KillableThread(threading.Thread):
+    def __init__(self):
+        super(StoppableThread, self).__init__()
+        self._stop_event = threading.Event()
+
+    def kill(self):
+        self._stop_event.set()
+
+    def active(self):
+        return self._stop_event.is_set()
+
 class Snake:
     def __init__(self, head, tail, direction):
         self.body = [head, tail]
@@ -196,7 +207,7 @@ class PySnake:
         self.printBoard()
         time.sleep(1) # Sleep for a sec to let the user get oriented
 
-        self.keythread = threading.Thread(target=self.keyboard_listener)
+        self.keythread = killableThread(target=self.keyboard_listener)
         self.keythread.start()
 
         try:
@@ -204,9 +215,10 @@ class PySnake:
             self.loop()
         except KeyboardInterrupt:
             print("Exiting\n")
-            self.keythread
+            self.keythread.kill()
             sys.exit(0)
-
+        
+        self.keythread.kill()
         return True
 
     def loop(self):
