@@ -207,7 +207,7 @@ class PySnake:
         self.printBoard()
         time.sleep(1) # Sleep for a sec to let the user get oriented
 
-        self.keythread = killableThread(target=self.keyboard_listener)
+        self.keythread = KillableThread(target=self.keyboard_listener)
         self.keythread.start()
 
         try:
