@@ -9,7 +9,7 @@ import argparse
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
-import termios, tty
+from evdev import InputDevice, categorize, ecodes
 
 class KillableThread(threading.Thread):
     def __init__(self, target):
@@ -66,21 +66,13 @@ class Snake:
 
 class PySnake:
     foodMarker = 'O'
-    snakeMarker = 'X'
     spaceMarker = '-'
+    snakeMarkers = ['1','2']
 
-    directionDict = {
-        'w': 0,
-        'd': 1,
-        's': 2,
-        'a': 3
-    }
-
-    # How many loops before the next food appears
-    foodFreq = 10
-
-    # The maximum number of food pellets on the screen
-    maxFood = 5
+    directionDicts = [
+        {103: 0, 106: 1, 108: 2, 105: 3},
+        {19: 0, 34: 1, 33: 2, 32: 3}
+    ]
 
     # Time between frames (seconds)
     sleepTime = 0.05
@@ -129,8 +121,8 @@ class PySnake:
             # print out + "\r\n"
         self.offset_canvas = self.matrix.SwapOnVSync(self.offset_canvas)
 
-    def placeSnake(self, coords):
-        self.board[coords[0]][coords[1]] = self.snakeMarker
+    def placeSnake(self, coords, marker):
+        self.board[coords[0]][coords[1]] = self.snakeMarkers[marker]
 
     def placeFood(self):
         while True:
@@ -143,25 +135,16 @@ class PySnake:
     def deleteMarker(self, coords):
         self.board[coords[0]][coords[1]] = self.spaceMarker
 
-    def getch(self):
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setraw(sys.stdin.fileno())
-            ch = sys.stdin.read(1)
-
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
     def keyboard_listener(self):
-        while True:
-            char = self.getch()
-            print char
-            if char == '/':
-                sys.exit(0)
-            if char in self.directionDict:
-                self.snake.changeDirection(self.directionDict[char])
+        dev = InputDevice('/dev/input/event0')
+        for event in dev.read_loop():
+            if event.type == ecodes.EV_KEY:
+                print(dev.active_keys())
+                active_keys = dev.active_keys()
+                for idx, snake in enumerate(self.snakes):
+                    for char in active_keys:
+                        if char in self.directionDicts[idx]:
+                            snake.changeDirection(self.directionDicts[idx][char])
 
     def run(self):
         self.args = self.parser.parse_args()
@@ -195,13 +178,22 @@ class PySnake:
         self.displayWidth = self.args.disp_width
         self.displayHeight = self.args.disp_height
 
-        self.snake = Snake( head=(self.displayWidth/2, self.displayHeight/2), tail=(self.displayWidth/2, self.displayHeight/2+1), direction=0)
+        # Place one snake on the left, and the other on the right.
+        # One will be going up, the other down
+        self.snakes = [
+            Snake( head=(self.displayWidth/4, self.displayHeight/2), tail=(self.displayWidth/4, self.displayHeight/2+1), direction=0),
+            Snake( head=((self.displayWidth/4)*3, self.displayHeight/2), tail=((self.displayWidth/4)*3, self.displayHeight/2-1), direction=2)
+        ]
 
         self.initializeBoard()
 
-        # Populate the initial two blocks of the snake
-        self.placeSnake(self.snake.body[0])
-        self.placeSnake(self.snake.body[1])
+        # Populate the initial two blocks of the snakes
+        for idx, snake in enumerate(self.snakes):
+            self.placeSnake(snake.body[0], marker=idx)
+            self.placeSnake(snake.body[1], marker=idx)
+
+        # Place food for the snakes
+        self.placeFood()
         self.placeFood()
 
         self.printBoard()
@@ -223,27 +215,28 @@ class PySnake:
 
     def loop(self):
         while True:
-            # move snake in direction by 1
-            newHead, oldTail = self.snake.move()
+            for idx, snake in enumerate(self.snakes):
+                # move snake in direction by 1
+                newHead, oldTail = snake.move()
 
-            # Check for going off the map
-            if (newHead[0] >= self.displayWidth) or (newHead[0] < 0) or (newHead[1] >= self.displayHeight) or (newHead[1] < 0):
-                break
+                # Check for going off the map
+                if (newHead[0] >= self.displayWidth) or (newHead[0] < 0) or (newHead[1] >= self.displayHeight) or (newHead[1] < 0):
+                    break
 
-            # If space was food, set grow to True and place new food
-            if self.board[newHead[0]][newHead[1]] == self.foodMarker:
-                self.snake.grow = True
-                self.placeFood()
-            elif self.board[newHead[0]][newHead[1]] == self.snakeMarker:
-                # If space was snake, the game is over
-                break
+                # If space was food, set grow to True and place new food
+                if self.board[newHead[0]][newHead[1]] == self.foodMarker:
+                    snake.grow = True
+                    self.placeFood()
+                elif self.board[newHead[0]][newHead[1]] in self.snakeMarkers:
+                    # If space was snake, the game is over
+                    break
 
-            # Remove tail unless the snake grew
-            if oldTail is not None:
-                self.deleteMarker(oldTail)
+                # Remove tail unless the snake grew
+                if oldTail is not None:
+                    self.deleteMarker(oldTail)
 
-            # Draw the snake
-            self.placeSnake(newHead)
+                # Draw the snake
+                self.placeSnake(newHead, marker=idx)
 
             self.printBoard()
             time.sleep(self.sleepTime)
