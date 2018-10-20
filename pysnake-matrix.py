@@ -11,16 +11,31 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 from evdev import InputDevice, categorize, ecodes
 
-class KillableThread(threading.Thread):
-    def __init__(self, target):
-        super(KillableThread, self).__init__(target=target)
-        self._stop_event = threading.Event()
+dev = InputDevice('/dev/input/event0')
+escapeKeys = [124, 99]
 
-    def kill(self):
-        self._stop_event.set()
+class KeyboardThread(threading.Thread):
+    escapeKeys = [29, 46]
 
-    def active(self):
-        return self._stop_event.is_set()
+    def __init__(self, updater):
+        self.updater = updater
+        super(KeyboardThread, self).__init__(target=None)
+
+    def setUpdater(updater):
+        self.updater = updater
+
+    def run(self):
+        print 'Starting Keyboard Thread'
+        for event in dev.read_loop():
+            if event.type == ecodes.EV_KEY:
+                print(dev.active_keys())
+                self.active_keys = dev.active_keys()
+                self.updater(self.active_keys)
+
+    def stop(self):
+        print "Keyboard thread killing itself"
+        super(KeyboardThread, self)._Thread__stop()
+
 
 class Snake:
     def __init__(self, head, tail, direction):
@@ -138,16 +153,11 @@ class PySnake:
     def deleteMarker(self, coords):
         self.board[coords[0]][coords[1]] = self.spaceMarker
 
-    def keyboard_listener(self):
-        dev = InputDevice('/dev/input/event0')
-        for event in dev.read_loop():
-            if event.type == ecodes.EV_KEY:
-                print(dev.active_keys())
-                active_keys = dev.active_keys()
-                for idx, snake in enumerate(self.snakes):
-                    for char in active_keys:
-                        if char in self.directionDicts[idx]:
-                            snake.changeDirection(self.directionDicts[idx][char])
+    def updateKeyboard(self, active_keys):
+        for idx, snake in enumerate(self.snakes):
+            for char in active_keys:
+                if char in self.directionDicts[idx]:
+                    snake.changeDirection(self.directionDicts[idx][char])
 
     def run(self):
         self.args = self.parser.parse_args()
@@ -202,28 +212,21 @@ class PySnake:
         self.printBoard()
         time.sleep(1) # Sleep for a sec to let the user get oriented
 
-        self.keythread = KillableThread(target=self.keyboard_listener)
-        self.keythread.start()
-
-        try:
-            # Start loop
-            self.loop()
-        except KeyboardInterrupt:
-            print("Exiting\n")
-            self.keythread.kill()
-            sys.exit(0)
-        
-        self.keythread.kill()
+        # Start loop
+        self.loop()
         return True
 
     def loop(self):
-        while True:
+        self.running = True
+        while self.running:
             for idx, snake in enumerate(self.snakes):
                 # move snake in direction by 1
                 newHead, oldTail = snake.move()
 
                 # Check for going off the map
                 if (newHead[0] >= self.displayWidth) or (newHead[0] < 0) or (newHead[1] >= self.displayHeight) or (newHead[1] < 0):
+                    print "Snek out of bounds!  Loser is Player" + str(idx+1)
+                    self.running = False
                     break
 
                 # If space was food, set grow to True and place new food
@@ -232,6 +235,8 @@ class PySnake:
                     self.placeFood()
                 elif self.board[newHead[0]][newHead[1]] in self.snakeMarkers:
                     # If space was snake, the game is over
+                    print "Snek collision!  Loser is Player " + str(idx+1)
+                    self.running = False
                     break
 
                 # Remove tail unless the snake grew
@@ -247,5 +252,8 @@ class PySnake:
 # Main function
 if __name__ == "__main__":
     pysnake = PySnake()
+    keyboard = KeyboardThread(updater=pysnake.updateKeyboard)
+    keyboard.start()
     if (not pysnake.run()):
         pysnake.print_help()
+    keyboard.stop()
