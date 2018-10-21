@@ -17,6 +17,9 @@ dev = InputDevice('/dev/input/event0')
 escapeKeys = (124, 99)
 
 titleImage = 'snek.bmp'
+scoreBg = 'end.bmp'
+p1Image = 'one.bmp'
+p2Image = 'two.bmp'
 
 class Display:
     def __init__(self, *args, **kwargs):
@@ -200,6 +203,57 @@ class TitleScreen:
             self.updateScreen()
             time.sleep(self.sleepTime)
 
+class ScoreScreen:
+    playerPosition = (48,31)
+    sleepTime = 0.05
+    
+    def __init__(self, matrix, displayWidth, displayHeight, bgImage, playerImages):
+        self.matrix = matrix
+        self.displayWidth = displayWidth
+        self.displayHeight = displayHeight
+
+        self.bgImage = Image.open(bgImage)
+        self.playerImages = []
+        for img in playerImages:
+            self.playerImages.append(Image.open(img))
+
+        self.winner = 0
+        
+        self.cursorPosition = True
+
+    def updateKeyboard(self, active_keys):
+        # If any key is pressed, exit the score screen
+        if len(active_keys) > 0:
+            self.running = False
+
+    def drawImage(self, image, position):
+        width, height = image.size
+
+        for y in range(height):
+            for x in range(width):
+                pixelval = image.getpixel((x, y))
+                self.offset_canvas.SetPixel(x + position[0], y + position[1], *pixelval)
+
+    def updateScreen(self):
+        self.offset_canvas.Clear()
+
+        self.drawImage(self.bgImage, (0, 0))
+        self.drawImage(self.playerImages[self.winner], self.playerPosition)
+
+        self.offset_canvas = self.matrix.SwapOnVSync(self.offset_canvas)
+
+    def run(self, winner):
+        self.winner, self.score = winner
+        self.offset_canvas = self.matrix.CreateFrameCanvas()
+        self.loop()
+        return True
+
+    def loop(self):
+        self.running = True
+        self.updateScreen() # Only need to update the screen once for this one
+        while self.running:
+            time.sleep(self.sleepTime)
+
 class PySnake:
     foodMarker = 'O'
     spaceMarker = '-'
@@ -267,9 +321,9 @@ class PySnake:
 
     def populateWinner(self, loser):
         if loser == 0:
-            self.winner = (2, self.snakes[1].length)
+            self.winner = (1, self.snakes[1].length)
         else:
-            self.winner = (1, self.snakes[0].length)
+            self.winner = (0, self.snakes[0].length)
 
     def run(self):
         self.offset_canvas = self.matrix.CreateFrameCanvas()
@@ -343,6 +397,7 @@ if __name__ == "__main__":
 
     title = TitleScreen(display.matrix, display.displayWidth, display.displayHeight, titleImage)
     pysnake = PySnake(display.matrix, display.displayWidth, display.displayHeight)
+    score = ScoreScreen(display.matrix, display.displayWidth, display.displayHeight, scoreBg, (p1Image, p2Image))
 
     keyboard = KeyboardThread(updater=title.updateKeyboard)
     keyboard.start()
@@ -352,7 +407,8 @@ if __name__ == "__main__":
         keyboard.setUpdater(pysnake.updateKeyboard)
         winner = pysnake.run()
         print "winner is " + str(winner[0]) + ", and score is " + str(winner[1])
-        # score.run(winner)
+        keyboard.setUpdater(score.updateKeyboard)
+        score.run(winner)
         keyboard.setUpdater(title.updateKeyboard)
 
     keyboard.stop()
