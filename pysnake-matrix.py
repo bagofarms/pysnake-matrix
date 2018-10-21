@@ -330,14 +330,13 @@ if __name__ == "__main__":
         sys.exit(0)
 
     title = TitleScreen(display.matrix, display.displayWidth, display.displayHeight)
-    # pysnake = PySnake(display.matrix, display.displayWidth, display.displayHeight)
+    pysnake = PySnake(display.matrix, display.displayWidth, display.displayHeight)
 
     keyboard = KeyboardThread(updater=title.updateKeyboard)
     keyboard.start()
 
-    # Put these in a while loop so it keeps going until someone hits exit on the title screen?
-    # Maybe if title.run() returns False, exit?
-    title.run()
-    # pysnake.run()
+    # Title screen returns false when user selects exit
+    while title.run():
+        pysnake.run()
 
     keyboard.stop()
