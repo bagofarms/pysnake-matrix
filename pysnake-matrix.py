@@ -11,8 +11,12 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 from evdev import InputDevice, categorize, ecodes
 
+from PIL import Image
+
 dev = InputDevice('/dev/input/event0')
 escapeKeys = [124, 99]
+
+titleImage = 'snek.bmp'
 
 class Display:
     def __init__(self, *args, **kwargs):
@@ -76,7 +80,7 @@ class KeyboardThread(threading.Thread):
         self.updater = updater
         super(KeyboardThread, self).__init__(target=None)
 
-    def setUpdater(updater):
+    def setUpdater(self, updater):
         self.updater = updater
 
     def run(self):
@@ -140,26 +144,27 @@ class TitleScreen:
     downButton = 108  # down arrow
     selectButton = 2  # 1 button
     # TODO: Load in bmps for these. Maybe make them into a "sprite" class?
-    snekSprite = [
-        [[0,255,0],[0,255,0],[0,255,0]],
-        [[0,255,0],[0,0,0],[0,0,0]],
-        [[0,255,0],[0,255,0],[0,255,0]],
-        [[0,0,0],[0,0,0],[0,255,0]],
-        [[0,255,0],[0,255,0],[0,255,0]]
-    ]
-    snekPosition = [25, 0]
+    # snekSprite = [
+    #     [[0,255,0],[0,255,0],[0,255,0]],
+    #     [[0,255,0],[0,0,0],[0,0,0]],
+    #     [[0,255,0],[0,255,0],[0,255,0]],
+    #     [[0,0,0],[0,0,0],[0,255,0]],
+    #     [[0,255,0],[0,255,0],[0,255,0]]
+    # ]
     arrowSprite = [
         [[0,0,0],[0,0,0],[255,255,255],[0,0,0]],
         [[255,255,255],[255,255,255],[255,255,255],[255,255,255]],
         [[0,0,0],[0,0,0],[255,255,255],[0,0,0]]
     ]
-    arrowPosition1 = [25, 25]
-    arrowPosition2 = [25, 35]
+    arrowPosition1 = [24, 39]
+    arrowPosition2 = [24, 47]
     
-    def __init__(self, matrix, displayWidth, displayHeight):
+    def __init__(self, matrix, displayWidth, displayHeight, titleImage):
         self.matrix = matrix
         self.displayWidth = displayWidth
         self.displayHeight = displayHeight
+
+        self.titleImage = Image.open(titleImage)
         
         self.cursorPosition = True
 
@@ -169,6 +174,12 @@ class TitleScreen:
         if self.selectButton in active_keys:
             self.running = False
 
+    def drawTitleImage(self):
+        for y in range(self.displayHeight):
+            for x in range(self.displayWidth):
+                pixelval = self.titleImage.getpixel((x, y))
+                self.offset_canvas.SetPixel(x, y, *pixelval)
+
     def drawSprite(self, sprite, position):
         for y, row in enumerate(sprite):
             for x, pixel in enumerate(row):
@@ -177,7 +188,7 @@ class TitleScreen:
     def updateScreen(self):
         self.offset_canvas.Clear()
 
-        self.drawSprite(self.snekSprite, self.snekPosition)
+        self.drawTitleImage()
         if self.cursorPosition:
             self.drawSprite(self.arrowSprite, self.arrowPosition1)
         else:
@@ -329,7 +340,7 @@ if __name__ == "__main__":
         display.parser.print_help()
         sys.exit(0)
 
-    title = TitleScreen(display.matrix, display.displayWidth, display.displayHeight)
+    title = TitleScreen(display.matrix, display.displayWidth, display.displayHeight, titleImage)
     pysnake = PySnake(display.matrix, display.displayWidth, display.displayHeight)
 
     keyboard = KeyboardThread(updater=title.updateKeyboard)
@@ -337,6 +348,8 @@ if __name__ == "__main__":
 
     # Title screen returns false when user selects exit
     while title.run():
+        keyboard.setUpdater(pysnake.updateKeyboard)
         pysnake.run()
+        keyboard.setUpdater(title.updateKeyboard)
 
     keyboard.stop()
