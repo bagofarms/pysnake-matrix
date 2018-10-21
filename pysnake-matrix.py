@@ -14,7 +14,7 @@ from evdev import InputDevice, categorize, ecodes
 from PIL import Image
 
 dev = InputDevice('/dev/input/event0')
-escapeKeys = [124, 99]
+escapeKeys = (124, 99)
 
 titleImage = 'snek.bmp'
 
@@ -100,6 +100,7 @@ class Snake:
         self.body = [head, tail]
         self.__direction = direction
         self.grow = False 
+        self.length = 2
 
     # Changing direction isn't as simple as writing a value
     # We need to check for exact opposite directions first,
@@ -129,6 +130,7 @@ class Snake:
 
         if self.grow:
             # return None since we are growing and don't want the tail deleted
+            self.length += 1
             oldTail = None
             self.grow = False
         else:
@@ -139,17 +141,16 @@ class Snake:
 
 class TitleScreen:
     sleepTime = 0.05
-    options = ['Go', 'Stahp']
     upButton = 103  # up arrow
     downButton = 108  # down arrow
     selectButton = 2  # 1 button
-    arrowSprite = [
-        [[0,0,0],[0,0,0],[255,255,255],[0,0,0]],
-        [[255,255,255],[255,255,255],[255,255,255],[255,255,255]],
-        [[0,0,0],[0,0,0],[255,255,255],[0,0,0]]
-    ]
-    arrowPosition1 = [24, 39]
-    arrowPosition2 = [24, 47]
+    arrowSprite = (
+        ((0,0,0),(0,0,0),(255,255,255),(0,0,0)),
+        ((255,255,255),(255,255,255),(255,255,255),(255,255,255)),
+        ((0,0,0),(0,0,0),(255,255,255),(0,0,0)),
+    )
+    arrowPosition1 = (24, 39)
+    arrowPosition2 = (24, 47)
     
     def __init__(self, matrix, displayWidth, displayHeight, titleImage):
         self.matrix = matrix
@@ -202,7 +203,7 @@ class TitleScreen:
 class PySnake:
     foodMarker = 'O'
     spaceMarker = '-'
-    snakeMarkers = ['1','2']
+    snakeMarkers = ('1','2')
 
     # Player 1 = up, right, down, left arrow keys
     # Player 2 = r, g, f, d
@@ -264,6 +265,12 @@ class PySnake:
                 if char in self.directionDicts[idx]:
                     snake.changeDirection(self.directionDicts[idx][char])
 
+    def populateWinner(self, loser):
+        if loser == 0:
+            self.winner = (2, self.snakes[1].length)
+        else:
+            self.winner = (1, self.snakes[0].length)
+
     def run(self):
         self.offset_canvas = self.matrix.CreateFrameCanvas()
 
@@ -290,7 +297,7 @@ class PySnake:
 
         # Start loop
         self.loop()
-        return True
+        return self.winner
 
     def loop(self):
         self.running = True
@@ -302,6 +309,7 @@ class PySnake:
                 # Check for going off the map
                 if (newHead[0] >= self.displayWidth) or (newHead[0] < 0) or (newHead[1] >= self.displayHeight) or (newHead[1] < 0):
                     print "Snek out of bounds!  Loser is Player" + str(idx+1)
+                    self.populateWinner(idx)
                     self.running = False
                     break
 
@@ -312,6 +320,7 @@ class PySnake:
                 elif self.board[newHead[0]][newHead[1]] in self.snakeMarkers:
                     # If space was snake, the game is over
                     print "Snek collision!  Loser is Player " + str(idx+1)
+                    self.populateWinner()
                     self.running = False
                     break
 
@@ -341,7 +350,9 @@ if __name__ == "__main__":
     # Title screen returns false when user selects exit
     while title.run():
         keyboard.setUpdater(pysnake.updateKeyboard)
-        pysnake.run()
+        winner = pysnake.run()
+        print "winner is " + str(winner[0]) + ", and score is " + str(winner[1])
+        # score.run(winner)
         keyboard.setUpdater(title.updateKeyboard)
 
     keyboard.stop()
