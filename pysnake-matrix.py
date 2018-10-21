@@ -143,14 +143,6 @@ class TitleScreen:
     upButton = 103  # up arrow
     downButton = 108  # down arrow
     selectButton = 2  # 1 button
-    # TODO: Load in bmps for these. Maybe make them into a "sprite" class?
-    # snekSprite = [
-    #     [[0,255,0],[0,255,0],[0,255,0]],
-    #     [[0,255,0],[0,0,0],[0,0,0]],
-    #     [[0,255,0],[0,255,0],[0,255,0]],
-    #     [[0,0,0],[0,0,0],[0,255,0]],
-    #     [[0,255,0],[0,255,0],[0,255,0]]
-    # ]
     arrowSprite = [
         [[0,0,0],[0,0,0],[255,255,255],[0,0,0]],
         [[255,255,255],[255,255,255],[255,255,255],[255,255,255]],
