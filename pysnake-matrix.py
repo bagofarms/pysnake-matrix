@@ -102,6 +102,7 @@ class Snake:
     def __init__(self, head, tail, direction):
         self.body = [head, tail]
         self.__direction = direction
+        self.__newdirection = direction
         self.grow = False 
         self.length = 2
 
@@ -119,9 +120,10 @@ class Snake:
             elif (command + self.__direction) == 4:
                 return
             else:
-                self.__direction = command
+                self.__newdirection = command
 
     def move(self):
+        self.__direction = self.__newdirection
         if self.__direction == 0:
             self.body.insert(0, (self.body[0][0], self.body[0][1] - 1))
         elif self.__direction == 1:
@@ -374,7 +376,7 @@ class PySnake:
                 elif self.board[newHead[0]][newHead[1]] in self.snakeMarkers:
                     # If space was snake, the game is over
                     print "Snek collision!  Loser is Player " + str(idx+1)
-                    self.populateWinner()
+                    self.populateWinner(idx)
                     self.running = False
                     break
 
