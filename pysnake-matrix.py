@@ -5,6 +5,7 @@ import os
 import random
 import threading
 import argparse
+import math
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/..'))
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
@@ -43,6 +44,7 @@ class Display:
         self.parser.add_argument("--led-multiplexing", action="store", help="Multiplexing type: 0=direct; 1=strip; 2=checker; 3=spiral; 4=ZStripe; 5=ZnMirrorZStripe; 6=coreman; 7=Kaler2Scan; 8=ZStripeUneven (Default: 0)", default=0, type=int)
         self.parser.add_argument("--disp-width", action="store", help="Width of full display.  Default: 64.", default=64, type=int)
         self.parser.add_argument("--disp-height", action="store", help="Height of full display. Default: 64.", default=64, type=int)
+        # self.parser.add_argument("--double-size", action="store", help="Whether the players and food on screen should be displayed in double size", default=False, type=bool)
 
     def create(self):
         self.args = self.parser.parse_args()
@@ -73,6 +75,8 @@ class Display:
         self.matrix = RGBMatrix(options = options)
         self.displayWidth = self.args.disp_width
         self.displayHeight = self.args.disp_height
+        # self.doubleSize = self.args.double_size
+        self.doubleSize = True
 
         return True
 
@@ -146,8 +150,8 @@ class Snake:
 
 class TitleScreen:
     sleepTime = 0.05
-    upButton = 103  # up arrow
-    downButton = 108  # down arrow
+    upButton = 72  # up arrow
+    downButton = 80  # down arrow
     selectButton = 2  # 1 button
     arrowSprite = (
         ((0,0,0),(0,0,0),(255,255,255),(0,0,0)),
@@ -253,6 +257,7 @@ class ScoreScreen:
     def loop(self):
         self.running = True
         self.updateScreen() # Only need to update the screen once for this one
+        time.sleep(3)
         while self.running:
             time.sleep(self.sleepTime)
 
@@ -264,23 +269,30 @@ class PySnake:
     # Player 1 = up, right, down, left arrow keys
     # Player 2 = r, g, f, d
     directionDicts = [
-        {103: 0, 106: 1, 108: 2, 105: 3},
+        {72: 0, 77: 1, 80: 2, 75: 3},
         {19: 0, 34: 1, 33: 2, 32: 3}
     ]
 
     # Time between frames (seconds)
     sleepTime = 0.05
 
-    def __init__(self, matrix, displayWidth, displayHeight):
+    def __init__(self, matrix, displayWidth, displayHeight, doubleSize=False):
         self.matrix = matrix
         self.displayWidth = displayWidth
         self.displayHeight = displayHeight
+        self.doubleSize = doubleSize
 
     def initializeBoard(self):
         self.board = []
-        for x in range(self.displayWidth):
+        if self.doubleSize:
+            width = self.displayWidth/2
+            height = self.displayHeight/2
+        else:
+            width = self.displayWidth
+            height = self.displayHeight
+        for x in range(width):
             col = []
-            for y in range(self.displayWidth):
+            for y in range(height):
                 col += [self.spaceMarker]
             self.board += [col]
 
@@ -292,11 +304,17 @@ class PySnake:
             for x in range(self.displayWidth):
                 # out += str(self.board[x][y])
                 # TODO: Make these snake colors configurable
-                if self.board[x][y] == self.snakeMarkers[0]:
+                if self.doubleSize:
+                    brdy = int(math.ceil(y/2))
+                    brdx = int(math.ceil(x/2))
+                else:
+                    brdy = y
+                    brdx = x
+                if self.board[brdx][brdy] == self.snakeMarkers[0]:
                     self.offset_canvas.SetPixel(x, y, 0, 255, 0)
-                elif self.board[x][y] == self.snakeMarkers[1]:
+                elif self.board[brdx][brdy] == self.snakeMarkers[1]:
                     self.offset_canvas.SetPixel(x, y, 255, 255, 0)
-                elif self.board[x][y] == self.foodMarker:
+                elif self.board[brdx][brdy] == self.foodMarker:
                     self.offset_canvas.SetPixel(x, y, 0, 0, 255)
             # print out + "\r\n"
         self.offset_canvas = self.matrix.SwapOnVSync(self.offset_canvas)
@@ -305,9 +323,15 @@ class PySnake:
         self.board[coords[0]][coords[1]] = self.snakeMarkers[marker]
 
     def placeFood(self):
+        if self.doubleSize:
+            width = self.displayWidth/2
+            height = self.displayHeight/2
+        else:
+            width = self.displayWidth
+            height = self.displayHeight
         while True:
-            x = random.randint(0, self.displayWidth - 1)
-            y = random.randint(0, self.displayHeight - 1)
+            x = random.randint(0, width - 1)
+            y = random.randint(0, height - 1)
             if self.board[x][y] == self.spaceMarker:
                 break
         self.board[x][y] = self.foodMarker
@@ -332,9 +356,15 @@ class PySnake:
 
         # Place one snake on the left, and the other on the right.
         # One will be going up, the other down
+        if self.doubleSize:
+            width = self.displayWidth/2
+            height = self.displayHeight/2
+        else:
+            width = self.displayWidth
+            height = self.displayHeight
         self.snakes = [
-            Snake( head=(self.displayWidth/4, self.displayHeight/2), tail=(self.displayWidth/4, self.displayHeight/2+1), direction=0),
-            Snake( head=((self.displayWidth/4)*3, self.displayHeight/2), tail=((self.displayWidth/4)*3, self.displayHeight/2-1), direction=2)
+            Snake( head=(width/4, height/2), tail=(width/4, height/2+1), direction=0),
+            Snake( head=((width/4)*3, height/2), tail=((width/4)*3, height/2-1), direction=2)
         ]
 
         self.initializeBoard()
@@ -362,8 +392,15 @@ class PySnake:
                 # move snake in direction by 1
                 newHead, oldTail = snake.move()
 
+                if self.doubleSize:
+                    width = self.displayWidth/2
+                    height = self.displayHeight/2
+                else:
+                    width = self.displayWidth
+                    height = self.displayHeight
+
                 # Check for going off the map
-                if (newHead[0] >= self.displayWidth) or (newHead[0] < 0) or (newHead[1] >= self.displayHeight) or (newHead[1] < 0):
+                if (newHead[0] >= width) or (newHead[0] < 0) or (newHead[1] >= height) or (newHead[1] < 0):
                     print "Snek out of bounds!  Loser is Player" + str(idx+1)
                     self.populateWinner(idx)
                     self.running = False
@@ -398,7 +435,7 @@ if __name__ == "__main__":
         sys.exit(0)
 
     title = TitleScreen(display.matrix, display.displayWidth, display.displayHeight, titleImage)
-    pysnake = PySnake(display.matrix, display.displayWidth, display.displayHeight)
+    pysnake = PySnake(display.matrix, display.displayWidth, display.displayHeight, display.doubleSize)
     score = ScoreScreen(display.matrix, display.displayWidth, display.displayHeight, scoreBg, (p1Image, p2Image))
 
     keyboard = KeyboardThread(updater=title.updateKeyboard)
