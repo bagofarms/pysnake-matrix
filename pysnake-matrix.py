@@ -21,6 +21,19 @@ scoreBg = 'end.bmp'
 p1Image = 'one.bmp'
 p2Image = 'two.bmp'
 
+# ScoreFont
+zero = '0.png'
+one = '1.png'
+two = '2.png'
+three = '3.png'
+four = '4.png'
+five = '5.png'
+six = '6.png'
+seven = '7.png'
+eight = '8.png'
+nine = '9.png'
+
+
 class Display:
     def __init__(self, *args, **kwargs):
         self.parser = argparse.ArgumentParser()
