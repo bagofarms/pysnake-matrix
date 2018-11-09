@@ -14,7 +14,7 @@ from evdev import InputDevice, categorize, ecodes
 
 from PIL import Image
 
-dev = InputDevice('/dev/input/event0')
+dev = InputDevice('/dev/input/by-id/usb-XGaming_X-Arcade-event-kbd')
 escapeKeys = (124, 99)
 
 titleImage = 'snek.bmp'
@@ -311,9 +311,9 @@ class PySnake:
                     brdy = y
                     brdx = x
                 if self.board[brdx][brdy] == self.snakeMarkers[0]:
-                    self.offset_canvas.SetPixel(x, y, 0, 255, 0)
+                    self.offset_canvas.SetPixel(x, y, 34, 177, 76)
                 elif self.board[brdx][brdy] == self.snakeMarkers[1]:
-                    self.offset_canvas.SetPixel(x, y, 255, 255, 0)
+                    self.offset_canvas.SetPixel(x, y, 255, 242, 0)
                 elif self.board[brdx][brdy] == self.foodMarker:
                     self.offset_canvas.SetPixel(x, y, 0, 0, 255)
             # print out + "\r\n"
